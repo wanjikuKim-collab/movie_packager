@@ -31,6 +31,23 @@ fn main() {
     let input_files = matches.value_of("input").unwrap();
     let output_file = matches.value_of("output"). unwrap();
 
-   
+    //Converting input file string to vector of input files
+    let input_files: Vec<&str> = input_files.split(',').collect();
+
+    //Using ffmpeg to concatenate input files into the output file
+    let mut cmd = Command::new("ffmpeg");
+    cmd.arg("-i").args(input_files).arg("-filter_complex").arg("concat=n=-2:v=1:a=1").arg(output_file);
+
+
+    match cmd.status(){
+        Ok(exit_status)=>{
+            if exit_status.success(){
+                println!("Movies packaged successfully into: {}", output_file);
+            } else {
+                eprintln!("Error: Failed to create the package.");
+            }
+        }
+        Err(e)=> eprintln!("Error: Failed to execute ffmpeg command: {}", e)
+    }
 
 }
