@@ -1,53 +1,58 @@
-use clap::{App, Arg};
-use std::process::Command;
-
+extern crate clap;
+use clap::{Arg, Command};
+use std::process::{exit};
 
 fn main() {
-
-    //Defining command- line arguments using clap
-    let matches = App::new("Movie Packager")
+    // Create the App builder
+    let app = Command::new("Movie Packager")
         .version("1.0")
         .author("Faith Kimani")
         .about("Packaging movies using ffmpeg")
+        // Define command-line arguments
         .arg(
-            Arg::with_name("input")
-            .short("i")
-            .long("input")
-            .value_name("FILE")
-            .help("Sets the input movie files (comma-separated)")
-            .required(true),
+            Arg::new("input")
+                .short('i')
+                .long("input")
+                .value_name("FILE")
+                .help("Sets the input movie files (comma-separated)")
+                .required(true),
         )
         .arg(
-            Arg::with_name("output")
-            .short("o")
-            .long("output")
-            .value_name("FILE")
-            .help("Sets the output packaged movie file")
-            .required(true),
-        )
-        .get_matches();
+            Arg::new("output")
+                .short('o')
+                .long("output")
+                .value_name("FILE")
+                .help("Sets the output packaged movie file")
+                .required(true),
+        );
 
-    //Extracting values of parsed arguments
-    let input_files = matches.value_of("input").unwrap();
-    let output_file = matches.value_of("output"). unwrap();
+    // Parse command-line arguments
+    let matches = app.get_matches();
 
-    //Converting input file string to vector of input files
-    let input_files: Vec<&str> = input_files.split(',').collect();
+    // Extract values of parsed arguments
+    let input_files:&String = matches.get_one("input").unwrap();
+    let output_file:&Str = matches.get_one("output").unwrap();
 
-    //Using ffmpeg to concatenate input files into the output file
-    let mut cmd = Command::new("ffmpeg");
-    cmd.arg("-i").args(input_files).arg("-filter_complex").arg("concat=n=-2:v=1:a=1").arg(output_file);
+    // Convert input file string to vector of input files
+    let input_files_vec: Vec<&str> = input_files.split(',').collect();
 
+    // Simplify FFMPEG Command Creation
+    let input_files_str = input_files_vec.join(" -i ");
+    let ffmpeg_command = format!(
+        "ffmpeg -i {} -filter_complex concat=n={}:v=1:a=1 -y {}",
+        input_files_str,
+        input_files_vec.len(),
+        output_file
+    );
 
-    match cmd.status(){
-        Ok(exit_status)=>{
-            if exit_status.success(){
-                println!("Movies packaged successfully into: {}", output_file);
-            } else {
-                eprintln!("Error: Failed to create the package.");
-            }
-        }
-        Err(e)=> eprintln!("Error: Failed to execute ffmpeg command: {}", e)
+    // Execute ffmpeg command using std::process::Command
+    let status = Command::new("sh").arg("-c").arg(&ffmpeg_command).status().unwrap();
+
+    // Handle FFMPEG Exit Status
+    if status.success() {
+        println!("Movies packaged successfully into: {}", output_file);
+    } else {
+        eprintln!("Error: Failed to create the package.");
+        exit(1);
     }
-
 }
