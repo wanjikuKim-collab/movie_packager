@@ -13,3 +13,5 @@ aws-sdk-config = "1.11.0"
 aws-config = "1.1.2"
 aws-sdk-dynamodb = "1.10.1"
 tokio = { version = "1.35.1", features = ["full"] }
+rusoto_core = "0.48.0"
+rusoto_s3 = "0.48.0"
