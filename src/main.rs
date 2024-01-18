@@ -1,6 +1,6 @@
 extern crate clap;// parses CLI arguments
 use clap::{Arg, Command as ClapCommand};
-use std::{process::{Command}, fs, path::Path};
+use std::{process::{Command}, fs};
 
 fn main() {
     // Create the App builder
@@ -25,16 +25,16 @@ fn main() {
                 .help("Sets the output packaged movie file")
                 .required(true),
         );
-
-    //output directory path
-    let output_dir = "src/assets/outputs";
+        
     
     // Output directory (with error handling)
+    let output_dir = "src/assets/outputs";
     match fs::create_dir_all(output_dir) {
-        Ok(()) => println!("Output directory created successfully"),
-        Err(error) => {
-            eprintln!("Error creating output directory: {}", error);
-            // Handle the error appropriately, e.g., exit the program
+        Err(e) => {
+          eprintln!("Failed to create output dir: {}", e);
+          std::process::exit(1);
+        }
+        Ok(_) => { // dir created 
         }
     }
 
@@ -42,23 +42,10 @@ fn main() {
     let matches = app.get_matches();
 
     // Extract values of parsed arguments
-    let input_files:&String = matches.get_one("input").unwrap();
-    let output_file = match matches.get_one("output") {
-        Some(output_path) => {
-            if !Path::new(&output_dir).file_name() {
-                eprintln!("Error: Invalid output file path: {}", output_path);
-                // Handle the error appropriately
-            } else {
-                // Use the validated output_path here
-            }
-        }
-        None => {
-            eprintln!("Error: Please provide an output file path using the --output flag.");
-            // Handle the error appropriately, e.g., exit the program or prompt for input
-        }
-    }
+    let input_files:&String = matches.get_one::<String>("input").unwrap();
+    let output_file = format!("{}/{}", output_dir, matches.get_one::<String>("output").unwrap());
 
-    let out_path = format!("{}/stream1", output_dir);
+
     //Converting input file string to vector of input files(the .ts files)
     let input_files: Vec<&str> = input_files.split(',').collect();
 
@@ -74,12 +61,12 @@ fn main() {
     .arg("0")
     .arg("-f")
     .arg("hls")
-    .arg(out_path); // HLS playlist output
+    .arg(output_file); // HLS playlist output
 
     match cmd.status(){
         Ok(exit_status)=>{
             if exit_status.success(){
-                println!("Movies packaged successfully into: {}", output_file);
+                println!("Movies packaged successfully into: {}", output_dir);
             } else {
                 eprintln!("Error: Failed to create the package.");
             }
