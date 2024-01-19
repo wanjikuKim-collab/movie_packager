@@ -27,7 +27,7 @@ fn main() {
         );
         
     
-    // Output directory (with error handling)
+    // Output directory creation with error handling
     let output_dir = "src/assets/outputs";
     match fs::create_dir_all(output_dir) {
         Err(e) => {
@@ -42,27 +42,40 @@ fn main() {
     let matches = app.get_matches();
 
     // Extract values of parsed arguments
-    let input_files:&String = matches.get_one::<String>("input").unwrap();
-    let output_file = format!("{}/{}", output_dir, matches.get_one::<String>("output").unwrap());
+    let input_files: Vec<&str> = matches.get_one::<String>("input").unwrap().split(',').collect();//extracting parsed input values and converting to vector files
 
+    for input_file in input_files{
+        //Error handling for canonical path
+        let output_file = match fs::canonicalize(input_file){
+            Ok(canonical_path)=>{
+                let filename = canonical_path.file_name().unwrap().to_str().unwrap();
+                format!("{}/{}.m3u8", output_dir, filename);
+            },
+            Err(e){
+                eprintln!("Error resolving input file path: {}", e);
+                // Handle the error gracefully, e.g., skip this file, prompt, or terminate
+                continue;// Skip this file for now
+            }
+        };
+        
+        //Using ffmpeg to concatenate input files into the output file
+        let mut cmd = Command::new("ffmpeg"); 
+        cmd.args(&[
+            "i",
+            input_file,
+            "-c:v",
+            "lib*264",
+            "-hls_time",
+            "10",
+            "-hls_list_size",
+            "o",
+            "-f",
+            "hls",
+            &output_file
+        ]);
+    }
 
-    //Converting input file string to vector of input files(the .ts files)
-    let input_files: Vec<&str> = input_files.split(',').collect();
-
-    //Using ffmpeg to concatenate input files into the output file
-    let mut cmd = Command::new("ffmpeg"); 
-    cmd.arg("-i")
-    .arg(input_files[0]) // Take first input file
-    .arg("-c:v") 
-    .arg("libx264")
-    .arg("-hls_time")  
-    .arg("10")
-    .arg("-hls_list_size") 
-    .arg("0")
-    .arg("-f")
-    .arg("hls")
-    .arg(output_file); // HLS playlist output
-
+    // HLS playlist output
     match cmd.status(){
         Ok(exit_status)=>{
             if exit_status.success(){
