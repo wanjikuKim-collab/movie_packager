@@ -26,38 +26,35 @@ fn main() {
                 .required(true),
         );
         
-    
-    // Output directory creation with error handling
-    let output_dir = "assets/outputs";
-    match fs::create_dir_all(output_dir) {
-        Err(e) => {
-          eprintln!("Failed to create output dir: {}", e);
-          std::process::exit(1);
-        }
-        Ok(_) => { // dir created 
-        }
-    }
-
     // Parse command-line arguments
     let matches = app.get_matches();
-
-    // Extract values of parsed arguments
-    let input_files: Vec<&str> = matches.get_one::<String>("input").unwrap().split(',').collect();//extracting parsed input values and converting to vector files
+    
+    // Extracting parsed input values and convert to vector files
+    let input_files: Vec<&str> = matches.get_one::<String>("input").unwrap().split(',').collect();
 
     for input_file in input_files{
         //Error handling for canonical path
-        let output_file = match fs::canonicalize(input_file) {
-            Ok(canonical_path) => {
-                let filename = canonical_path.file_name().unwrap().to_str().unwrap();
-                format!("{}/{}.m3u8", output_dir, filename)
-            },
+        let canonical_input_path = match fs::canonicalize(input_file) {
+            Ok(canonical_path) =>  canonical_path ,
             Err(e)=>{
                 eprintln!("Error resolving input file path: {}", e);
-                // Handle the error gracefully, e.g., skip this file, prompt, or terminate
                 continue;            
             }
         };
+
+        //Extracting base filename without extension
+        let filename = canonical_input_path.file_name().unwrap().to_str().unwrap();
+        let base_filename = filename.split('.').next().unwrap();
         
+        //Creating output folder for the respective input file
+        let output_folder = format!("assets/outputs/{}", base_filename);
+        fs::create_dir_all(&output_folder).unwrap_or_else(|e|{
+           eprintln!("Failed to create output folder: {}",e);
+           std::process::exit(1); 
+        });
+
+        //Constructs full output path within the folder
+        let output_file = format!("{}/{}.m3u8", output_folder, base_filename);
         //Using ffmpeg to concatenate input files into the output file
         let mut cmd = Command::new("ffmpeg"); 
         cmd.arg("-i")
@@ -84,6 +81,22 @@ fn main() {
             Err(e) => eprintln!("Error executing ffmpeg command: {}", e)
         }
     }
+
+    // // Output directory creation with error handling
+    // let output_dir = "assets/outputs";
+    // match fs::create_dir_all(output_dir) {
+    //     Err(e) => {
+    //       eprintln!("Failed to create output dir: {}", e);
+    //       std::process::exit(1);
+    //     }
+    //     Ok(_) => { // dir created 
+    //     }
+    // }
+
+  
+
+    
+    
 
 
 }
