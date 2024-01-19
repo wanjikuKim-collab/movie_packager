@@ -28,7 +28,7 @@ fn main() {
         
     
     // Output directory creation with error handling
-    let output_dir = "src/assets/outputs";
+    let output_dir = "assets/outputs";
     match fs::create_dir_all(output_dir) {
         Err(e) => {
           eprintln!("Failed to create output dir: {}", e);
@@ -46,46 +46,45 @@ fn main() {
 
     for input_file in input_files{
         //Error handling for canonical path
-        let output_file = match fs::canonicalize(input_file){
-            Ok(canonical_path)=>{
+        let output_file = match fs::canonicalize(input_file) {
+            Ok(canonical_path) => {
                 let filename = canonical_path.file_name().unwrap().to_str().unwrap();
-                format!("{}/{}.m3u8", output_dir, filename);
+                format!("{}/{}.m3u8", output_dir, filename)
             },
-            Err(e){
+            Err(e)=>{
                 eprintln!("Error resolving input file path: {}", e);
                 // Handle the error gracefully, e.g., skip this file, prompt, or terminate
-                continue;// Skip this file for now
+                continue;            
             }
         };
         
         //Using ffmpeg to concatenate input files into the output file
         let mut cmd = Command::new("ffmpeg"); 
-        cmd.args(&[
-            "i",
-            input_file,
-            "-c:v",
-            "lib*264",
-            "-hls_time",
-            "10",
-            "-hls_list_size",
-            "o",
-            "-f",
-            "hls",
-            &output_file
-        ]);
+        cmd.arg("-i")
+        .arg(input_file) 
+        .arg("-c:v") 
+        .arg("libx264")
+        .arg("-hls_time")  
+        .arg("10")
+        .arg("-hls_list_size") 
+        .arg("0")
+        .arg("-f")
+        .arg("hls")
+        .arg(&output_file);
+        
+        // HLS playlist output
+        match cmd.status() {
+            Ok(exit_status) => {
+                if exit_status.success() {
+                    println!("Successfully packaged {} to {}", input_file, output_file);
+                } else {
+                    eprintln!("Error creating output file {}: ffmpeg failed", output_file);
+                }
+            },
+            Err(e) => eprintln!("Error executing ffmpeg command: {}", e)
+        }
     }
 
-    // HLS playlist output
-    match cmd.status(){
-        Ok(exit_status)=>{
-            if exit_status.success(){
-                println!("Movies packaged successfully into: {}", output_dir);
-            } else {
-                eprintln!("Error: Failed to create the package.");
-            }
-        }
-        Err(e)=> eprintln!("Error: Failed to execute ffmpeg command: {}", e)
-    }
 
 }
 
